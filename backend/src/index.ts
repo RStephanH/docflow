@@ -4,6 +4,8 @@ import dotenv from 'dotenv'
 import documentsRouter from './routes/documents'
 import authRouter from './routes/auth';
 import { authMiddleware } from './middleware/auth';
+import { rateLimiter } from './middleware/rateLimiter'  
+import metricsRouter from './routes/metrics'             
 
 dotenv.config()
 
@@ -12,6 +14,7 @@ const PORT = process.env.PORT || 3000
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://mongo:27017/pdfgen'
 
 app.use(express.json())
+app.use(rateLimiter)  // ← ajout du rate limiter
 
 // CORS — autorise Authorization pour le JWT
 app.use((req, res, next) => {
@@ -35,6 +38,8 @@ app.use('/auth', authRouter)
 
 // Toutes les routes /api/* sont protégées par JWT
 app.use('/api', authMiddleware)
+app.use('/api/metrics', metricsRouter)    
+app.use('/api/documents', documentsRouter)
 app.use('/api/documents', documentsRouter)
 
 // Connexion MongoDB puis démarrage serveur
