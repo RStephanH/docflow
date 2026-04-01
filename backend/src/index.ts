@@ -1,6 +1,7 @@
 import express from 'express'
 import mongoose from 'mongoose'
 import dotenv from 'dotenv'
+import documentsRouter from './routes/documents'
 
 dotenv.config()
 
@@ -17,6 +18,8 @@ app.use((req, res, next) => {
   res.header('Access-Control-Allow-Methods', 'GET, POST, DELETE')
   next()
 })
+
+app.use('/api/documents', documentsRouter)
 
 // Health check — pour vérifier que le serveur tourne
 app.get('/health', (req, res) => {
