@@ -2,6 +2,8 @@ import express from 'express'
 import mongoose from 'mongoose'
 import dotenv from 'dotenv'
 import documentsRouter from './routes/documents'
+import authRouter from './routes/auth';
+import { authMiddleware } from './middleware/auth';
 
 dotenv.config()
 
@@ -11,20 +13,29 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://mongo:27017/pdfgen'
 
 app.use(express.json())
 
-// CORS simple — autorise le frontend à appeler l'API
+// CORS — autorise Authorization pour le JWT
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*')
-  res.header('Access-Control-Allow-Headers', 'Content-Type')
-  res.header('Access-Control-Allow-Methods', 'GET, POST, DELETE')
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization')  // ← ajout Authorization
+  res.header('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS')   // ← ajout OPTIONS
+  if (req.method === 'OPTIONS') {                                             // ← preflight
+    res.sendStatus(204)
+    return
+  }
   next()
 })
 
-app.use('/api/documents', documentsRouter)
-
-// Health check — pour vérifier que le serveur tourne
+// Health check — non protégé
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', db: mongoose.connection.readyState })
 })
+
+// Auth — non protégé
+app.use('/auth', authRouter)
+
+// Toutes les routes /api/* sont protégées par JWT
+app.use('/api', authMiddleware)
+app.use('/api/documents', documentsRouter)
 
 // Connexion MongoDB puis démarrage serveur
 mongoose

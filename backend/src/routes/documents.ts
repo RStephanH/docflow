@@ -11,8 +11,8 @@ const CreateDocumentSchema = z.object({
   content: z.string().min(1, 'Le contenu est requis'),
 })
 
-// POST /api/documents
-router.post('/', async (req: Request, res: Response) => {
+// POST /api/documents/generate — génère un PDF à partir du titre et contenu, sauvegarde en base, retourne le PDF
+router.post('/generate', async (req: Request, res: Response) => {
   try {
     // 1. Validation
     const parsed = CreateDocumentSchema.safeParse(req.body)
