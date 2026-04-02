@@ -2,7 +2,8 @@ import { Router, Request, Response } from 'express'
 import { z } from 'zod'
 import { generatePdf } from '../services/pdfService'
 import DocumentModel from '../models/Document'
-import { recordGeneration, recordError } from './metrics'  // ← ajout
+import { recordGeneration, recordError } from './metrics'
+import { signDocument } from '../services/signatureService'
 
 const router = Router()
 
@@ -23,6 +24,11 @@ router.post('/generate', async (req: Request, res: Response) => {
     const { title, content } = parsed.data
     const pdfBuffer = await generatePdf({ title, content })
     const doc = await DocumentModel.create({ title, content })
+
+    // Signature asynchrone — on ne bloque pas la réponse PDF
+signDocument(doc.id)
+  .then(sig => console.log(`[Signature] Doc ${doc.id} signé : ${sig}`))
+  .catch(err => console.error(`[Signature] Doc ${doc.id} : ${err.message}`))
 
     recordGeneration(Date.now() - start)  // ← ajout
 

@@ -1,6 +1,8 @@
 import { Router, Request, Response } from 'express'
 import mongoose from 'mongoose'
 import DocumentModel from '../models/Document'
+import { getCircuitState } from '../services/signatureService'
+
 
 const router = Router()
 
@@ -21,14 +23,15 @@ router.get('/', async (req: Request, res: Response) => {
   try {
     const totalDocs = await DocumentModel.countDocuments()
     res.json({
-      totalDocs,
-      totalErrors,
-      uptime: Math.floor((Date.now() - startTime) / 1000),
-      dbStatus: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
-      avgGenerationMs: totalGenerations > 0
-        ? Math.round(totalGenerationMs / totalGenerations)
-        : 0,
-    })
+  totalDocs,
+  totalErrors,
+  uptime: Math.floor((Date.now() - startTime) / 1000),
+  dbStatus: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+  avgGenerationMs: totalGenerations > 0
+    ? Math.round(totalGenerationMs / totalGenerations)
+    : 0,
+  circuitBreaker: getCircuitState(),  // ← ajout
+})
   } catch {
     res.status(500).json({ error: 'Erreur métriques' })
   }
