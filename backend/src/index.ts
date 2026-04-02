@@ -32,6 +32,7 @@ const ENV = envParsed.data
 
 // ── App ───────────────────────────────────────────────────────────────────
 const app = express()
+app.set('trust proxy', 1)  // ← AJOUT — fait confiance à Nginx
 
 app.use(express.json())
 app.use(requestLogger)
