@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
-import { login, generateDocument } from '../api/documents'
+import { login, generateDocument, downloadDocument } from '../api/documents'
+
 
 interface FormData {
   title: string
@@ -24,22 +25,16 @@ export default function Home() {
   }
 
   const onSubmit = async (data: FormData) => {
-    try {
-      setStatus('idle')
-      const blob = await generateDocument(data.title, data.content)
-      // Téléchargement automatique du PDF
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `${data.title}.pdf`
-      a.click()
-      URL.revokeObjectURL(url)
-      setStatus('success')
-      reset()
-    } catch {
-      setStatus('error')
-    }
+  try {
+    setStatus('idle')
+    const doc = await generateDocument(data.title, data.content)
+    await downloadDocument(doc.id, doc.title)
+    setStatus('success')
+    reset()
+  } catch {
+    setStatus('error')
   }
+}
 
   if (!isLogged) {
     return (

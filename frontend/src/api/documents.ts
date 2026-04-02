@@ -15,7 +15,17 @@ export interface Document {
   _id: string
   title: string
   content: string
+  fileId?: string        // ← AJOUT
   createdAt: string
+}
+
+// ← AJOUT — réponse de /generate avec GridFS
+export interface GeneratedDocument {
+  id: string
+  title: string
+  fileId: string
+  createdAt: string
+  downloadUrl: string
 }
 
 export interface PaginatedDocuments {
@@ -42,13 +52,23 @@ export const login = async (email: string, password: string) => {
 
 export const logout = () => localStorage.removeItem('token')
 
-export const generateDocument = async (title: string, content: string): Promise<Blob> => {
-  const { data } = await API.post(
-    '/api/documents/generate',
-    { title, content },
-    { responseType: 'blob' }
-  )
+// ← MODIFIÉ — retourne les métadonnées au lieu d'un Blob
+export const generateDocument = async (title: string, content: string): Promise<GeneratedDocument> => {
+  const { data } = await API.post('/api/documents/generate', { title, content })
   return data
+}
+
+// ← AJOUT — télécharge le PDF via GridFS
+export const downloadDocument = async (id: string, title: string): Promise<void> => {
+  const { data } = await API.get(`/api/documents/${id}/download`, {
+    responseType: 'blob'
+  })
+  const url = URL.createObjectURL(data)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${title}.pdf`
+  a.click()
+  URL.revokeObjectURL(url)
 }
 
 export const getDocuments = async (page = 1, limit = 10): Promise<PaginatedDocuments> => {

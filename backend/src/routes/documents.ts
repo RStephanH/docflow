@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express'
 import { z } from 'zod'
 import { generatePdf } from '../services/pdfService'
+import { uploadPdf, downloadPdf } from '../services/storageService'
 import DocumentModel from '../models/Document'
 import { recordGeneration, recordError } from './metrics'
 import { signDocument } from '../services/signatureService'
@@ -14,7 +15,7 @@ const CreateDocumentSchema = z.object({
 
 // POST /api/documents/generate
 router.post('/generate', async (req: Request, res: Response) => {
-  const start = Date.now()  // ← ajout
+  const start = Date.now()
   try {
     const parsed = CreateDocumentSchema.safeParse(req.body)
     if (!parsed.success) {
@@ -22,25 +23,38 @@ router.post('/generate', async (req: Request, res: Response) => {
     }
 
     const { title, content } = parsed.data
+
+    // 1. Génération PDF
     const pdfBuffer = await generatePdf({ title, content })
-    const doc = await DocumentModel.create({ title, content })
 
-    // Signature asynchrone — on ne bloque pas la réponse PDF
-signDocument(doc.id)
-  .then(sig => console.log(`[Signature] Doc ${doc.id} signé : ${sig}`))
-  .catch(err => console.error(`[Signature] Doc ${doc.id} : ${err.message}`))
+    // 2. Upload GridFS
+    const fileId = await uploadPdf(pdfBuffer, `${title}-${Date.now()}.pdf`)
 
-    recordGeneration(Date.now() - start)  // ← ajout
-
-    res.set({
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="${doc.id}.pdf"`,
-      'X-Document-Id': doc.id,
+    // 3. Sauvegarde en base avec fileId
+    const doc = await DocumentModel.create({
+      title,
+      content,
+      fileId: fileId.toString()
     })
-    return res.send(pdfBuffer)
+
+    recordGeneration(Date.now() - start)
+
+    // 4. Signature asynchrone
+    signDocument(doc.id)
+      .then(sig => console.log(`[Signature] Doc ${doc.id} signé : ${sig}`))
+      .catch(err => console.error(`[Signature] Doc ${doc.id} : ${err.message}`))
+
+    // 5. Retourne les métadonnées + lien download
+    return res.status(201).json({
+      id:        doc.id,
+      title:     doc.title,
+      fileId:    doc.fileId,
+      createdAt: doc.createdAt,
+      downloadUrl: `/api/documents/${doc.id}/download`
+    })
 
   } catch (err) {
-    recordError()  // ← ajout
+    recordError()
     console.error('Erreur génération PDF :', err)
     return res.status(500).json({ error: 'Erreur interne' })
   }
@@ -58,14 +72,52 @@ router.get('/', async (req: Request, res: Response) => {
       DocumentModel.countDocuments(),
     ])
 
-    return res.json({
-      docs,
-      total,
-      page,
-      totalPages: Math.ceil(total / limit),
-    })
+    return res.json({ docs, total, page, totalPages: Math.ceil(total / limit) })
   } catch (err) {
-    console.error('Erreur listing documents :', err)
+    recordError()
+    return res.status(500).json({ error: 'Erreur interne' })
+  }
+})
+
+// GET /api/documents/:id
+router.get('/:id', async (req: Request, res: Response) => {
+  try {
+    const doc = await DocumentModel.findById(req.params.id)
+    if (!doc) return res.status(404).json({ error: 'Document introuvable' })
+
+    return res.json({
+      id:          doc.id,
+      title:       doc.title,
+      content:     doc.content,
+      fileId:      doc.fileId,
+      createdAt:   doc.createdAt,
+      downloadUrl: doc.fileId ? `/api/documents/${doc.id}/download` : null
+    })
+  } catch {
+    return res.status(500).json({ error: 'Erreur interne' })
+  }
+})
+
+// GET /api/documents/:id/download
+router.get('/:id/download', async (req: Request, res: Response) => {
+  try {
+    const doc = await DocumentModel.findById(req.params.id)
+    if (!doc) return res.status(404).json({ error: 'Document introuvable' })
+    if (!doc.fileId) return res.status(404).json({ error: 'Fichier PDF introuvable' })
+
+    res.set({
+      'Content-Type':        'application/pdf',
+      'Content-Disposition': `attachment; filename="${doc.title}.pdf"`,
+    })
+
+    const downloadStream = downloadPdf(doc.fileId)
+    downloadStream.pipe(res)
+
+    downloadStream.on('error', () => {
+      res.status(500).json({ error: 'Erreur téléchargement' })
+    })
+
+  } catch {
     return res.status(500).json({ error: 'Erreur interne' })
   }
 })

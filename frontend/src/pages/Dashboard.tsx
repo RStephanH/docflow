@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getDocuments, getMetrics, generateDocument } from '../api/documents'
+import { getDocuments, getMetrics, downloadDocument } from '../api/documents'
 import type { Document, Metrics } from '../api/documents'
 
 
@@ -32,14 +32,9 @@ export default function Dashboard() {
   useEffect(() => { fetchData(page) }, [page])
 
   const handleDownload = async (doc: Document) => {
-    const blob = await generateDocument(doc.title, doc.content)
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${doc.title}.pdf`
-    a.click()
-    URL.revokeObjectURL(url)
-  }
+  await downloadDocument(doc._id, doc.title)
+}
+
 
   const circuitColor = (state: string) => {
     if (state === 'CLOSED')    return 'text-green-600 bg-green-50'
