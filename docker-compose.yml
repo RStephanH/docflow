@@ -2,9 +2,9 @@ services:
   frontend:
     build: ./frontend
     ports:
-      - "5173:5173"
+    - "5173:5173"
     environment:
-      - VITE_API_URL=http://localhost:3000
+      - VITE_API_URL=https://friendly-palm-tree-5w4v9jp4jwqh4prv-3000.app.github.dev
     depends_on:
       - backend
 
