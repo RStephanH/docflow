@@ -59,7 +59,7 @@ jobs:
 
       - name: Test Frontend
         working-directory: ./frontend
-        run: npm run test -- --ci
+        run: npm run test
 
   build-and-push:
     name: Build & Push Docker Images
@@ -92,9 +92,7 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:${{ github.sha }}
             ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:latest
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:buildcache
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:buildcache,mode=max
-
+          
       # -------- FRONTEND --------
       - name: Build & Push Frontend Image
         uses: docker/build-push-action@v5
@@ -104,8 +102,6 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ github.sha }}
             ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:latest
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:buildcache
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:buildcache,mode=max
 
       # -------- SECURITY SCAN --------
       - name: Scan Backend Image (Trivy)
