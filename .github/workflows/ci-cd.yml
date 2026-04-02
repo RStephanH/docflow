@@ -8,8 +8,8 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  BACKEND_IMAGE_NAME: ${{ github.repository }}-backend
-  FRONTEND_IMAGE_NAME: ${{ github.repository }}-frontend
+  BACKEND_IMAGE_NAME: rstephanh/docflow-backend-backend
+  FRONTEND_IMAGE_NAME: rstephanh/docflow-backend-frontend
 
 jobs:
   quality-checks:
