@@ -137,7 +137,7 @@ Push → GitHub Actions → Tests → Build Docker → Push GHCR → Deploy Rend
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/docflow.git
+git clone https://github.com/RStephanH/docflow.git
 cd docflow
 docker compose up --build
 ```
