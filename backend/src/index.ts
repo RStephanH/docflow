@@ -14,11 +14,11 @@ dotenv.config()
 
 // ── Validation des variables d'environnement ──────────────────────────────
 const EnvSchema = z.object({
-  PORT:        z.string().default('3000'),
+  PORT: z.string().default('3000'),
   MONGODB_URI: z.string().min(1, 'MONGODB_URI est requis'),
-  JWT_SECRET:  z.string().default('docflow-secret-dev'),
-  LOG_LEVEL:   z.string().default('info'),
-  NODE_ENV:    z.string().default('development'),
+  JWT_SECRET: z.string().default('docflow-secret-dev'),
+  LOG_LEVEL: z.string().default('info'),
+  NODE_ENV: z.string().default('development'),
 })
 
 const envParsed = EnvSchema.safeParse(process.env)
@@ -57,7 +57,7 @@ app.use('/auth', authRouter)
 
 // Routes protégées JWT
 app.use('/api', authMiddleware)
-app.use('/api/metrics',   metricsRouter)
+app.use('/api/metrics', metricsRouter)
 app.use('/api/documents', documentsRouter)
 
 // ── MongoDB + démarrage ───────────────────────────────────────────────────
@@ -65,8 +65,11 @@ mongoose
   .connect(ENV.MONGODB_URI)
   .then(() => {
     logger.info('MongoDB connecté')
-    app.listen(parseInt(ENV.PORT), () => {
-      logger.info('Serveur démarré', { port: ENV.PORT, env: ENV.NODE_ENV })
+    app.listen(parseInt(ENV.PORT), '0.0.0.0', () => {
+      logger.info('Server started', {
+        port: ENV.PORT,
+        env: ENV.NODE_ENV,
+      })
     })
   })
   .catch((err) => {
