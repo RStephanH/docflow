@@ -14,7 +14,7 @@ env:
 jobs:
   quality-checks:
     name: Lint & Tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout repository
@@ -68,7 +68,7 @@ jobs:
   build-and-push:
     name: Build & Push Docker Images
     needs: quality-checks
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     if: github.event_name == 'push'
 
@@ -99,7 +99,7 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:${{ github.sha }}
 
       - name: Scan Backend Image
-        uses: aquasecurity/trivy-action@v0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:${{ github.sha }}
           format: table
@@ -129,7 +129,7 @@ jobs:
   deploy:
     name: Deploy to Render
     needs: build-and-push
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     if: github.ref == 'refs/heads/main'
 
