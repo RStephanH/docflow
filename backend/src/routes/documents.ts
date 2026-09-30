@@ -9,7 +9,7 @@ import { signDocument } from '../services/signatureService'
 const router = Router()
 
 const CreateDocumentSchema = z.object({
-  title:   z.string().min(1, 'Le titre est requis'),
+  title: z.string().min(1, 'Le titre est requis'),
   content: z.string().min(1, 'Le contenu est requis'),
 })
 
@@ -46,9 +46,9 @@ router.post('/generate', async (req: Request, res: Response) => {
 
     // 5. Retourne les métadonnées + lien download
     return res.status(201).json({
-      id:        doc.id,
-      title:     doc.title,
-      fileId:    doc.fileId,
+      id: doc.id,
+      title: doc.title,
+      fileId: doc.fileId,
       createdAt: doc.createdAt,
       downloadUrl: `/api/documents/${doc.id}/download`
     })
@@ -63,9 +63,9 @@ router.post('/generate', async (req: Request, res: Response) => {
 // GET /api/documents?page=1&limit=10
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const page  = Math.max(1, parseInt(req.query.page  as string) || 1)
+    const page = Math.max(1, parseInt(req.query.page as string) || 1)
     const limit = Math.min(50, parseInt(req.query.limit as string) || 10)
-    const skip  = (page - 1) * limit
+    const skip = (page - 1) * limit
 
     const [docs, total] = await Promise.all([
       DocumentModel.find().sort({ createdAt: -1 }).skip(skip).limit(limit),
@@ -73,7 +73,7 @@ router.get('/', async (req: Request, res: Response) => {
     ])
 
     return res.json({ docs, total, page, totalPages: Math.ceil(total / limit) })
-  } catch (err) {
+  } catch {
     recordError()
     return res.status(500).json({ error: 'Erreur interne' })
   }
@@ -86,11 +86,11 @@ router.get('/:id', async (req: Request, res: Response) => {
     if (!doc) return res.status(404).json({ error: 'Document introuvable' })
 
     return res.json({
-      id:          doc.id,
-      title:       doc.title,
-      content:     doc.content,
-      fileId:      doc.fileId,
-      createdAt:   doc.createdAt,
+      id: doc.id,
+      title: doc.title,
+      content: doc.content,
+      fileId: doc.fileId,
+      createdAt: doc.createdAt,
       downloadUrl: doc.fileId ? `/api/documents/${doc.id}/download` : null
     })
   } catch {
@@ -106,7 +106,7 @@ router.get('/:id/download', async (req: Request, res: Response) => {
     if (!doc.fileId) return res.status(404).json({ error: 'Fichier PDF introuvable' })
 
     res.set({
-      'Content-Type':        'application/pdf',
+      'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="${doc.title}.pdf"`,
     })
 
