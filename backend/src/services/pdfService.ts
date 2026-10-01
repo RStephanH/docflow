@@ -1,4 +1,4 @@
-import htmlPdf from 'html-pdf-node'
+import puppeteer from 'puppeteer-core'
 
 interface PdfData {
   title: string
@@ -12,9 +12,21 @@ export const generatePdf = async (data: PdfData): Promise<Buffer> => {
       <head>
         <meta charset="utf-8">
         <style>
-          body { font-family: Arial, sans-serif; padding: 40px; color: #333; }
-          h1   { color: #1a1a2e; border-bottom: 2px solid #eee; padding-bottom: 12px; }
-          p    { line-height: 1.7; }
+          body {
+            font-family: Arial, sans-serif;
+            padding: 40px;
+            color: #333;
+          }
+
+          h1 {
+            color: #1a1a2e;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 12px;
+          }
+
+          p {
+            line-height: 1.7;
+          }
         </style>
       </head>
       <body>
@@ -24,13 +36,29 @@ export const generatePdf = async (data: PdfData): Promise<Buffer> => {
     </html>
   `
 
-  const file = { content: html }
-  const options = {
-  format: 'A4' as const,
-  printBackground: true,
-  args: ['--no-sandbox', '--disable-setuid-sandbox']
-}
+  const browser = await puppeteer.launch({
+    executablePath: '/usr/bin/chromium',
+    headless: true,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+    ],
+  })
 
-  const buffer = await htmlPdf.generatePdf(file, options)
-  return buffer as Buffer
+  try {
+    const page = await browser.newPage()
+
+    await page.setContent(html, {
+      waitUntil: 'load',
+    })
+
+    const buffer = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+    })
+
+    return Buffer.from(buffer)
+  } finally {
+    await browser.close()
+  }
 }
