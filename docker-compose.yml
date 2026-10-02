@@ -22,10 +22,14 @@ services:
     environment:
       MONGODB_URI: mongodb://mongo:27017/pdfgen
       NODE_ENV: production
-      JWT_SECRET: docflow-secret-prod
+      JWT_SECRET: ${JWT_SECRET}
       LOG_LEVEL: info
+      PDF_SERVICE_HOSTPORT: pdf-service:3001
+      PDF_SERVICE_TOKEN: ${PDF_SERVICE_TOKEN}
     depends_on:
       mongo:
+        condition: service_healthy
+      pdf-service:
         condition: service_healthy
     healthcheck:
       test:
@@ -39,6 +43,25 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s
+
+  pdf-service:
+    build: ./pdf-service
+    environment:
+      PDF_SERVICE_TOKEN: ${PDF_SERVICE_TOKEN}
+      CHROMIUM_NO_SANDBOX: "true"
+    # no "ports:" on purpose: reachable only from the compose network
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3001/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
 
   mongo:
     image: mongo:7

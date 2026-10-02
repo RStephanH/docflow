@@ -1,7 +1,7 @@
 FROM node:22-bookworm-slim
 RUN apt-get update \
  && apt-get upgrade -y \
- && apt-get install -y --no-install-recommends chromium fonts-liberation \
+ && apt-get install -y --no-install-recommends chromium fonts-liberation fonts-noto-color-emoji \
  && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY package*.json ./

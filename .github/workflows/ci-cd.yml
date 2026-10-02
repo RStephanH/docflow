@@ -10,6 +10,7 @@ env:
   REGISTRY: ghcr.io
   BACKEND_IMAGE_NAME: rstephanh/docflow-backend
   FRONTEND_IMAGE_NAME: rstephanh/docflow-frontend
+  PDF_IMAGE_NAME: rstephanh/docflow-pdf-service
 
 jobs:
   quality-checks:
@@ -125,6 +126,35 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ github.sha }}
             ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:latest
+
+      # -------- PDF SERVICE --------
+
+      - name: Build PDF Service Image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./pdf-service
+          push: false
+          load: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.PDF_IMAGE_NAME }}:${{ github.sha }}
+
+      - name: Scan PDF Service Image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.PDF_IMAGE_NAME }}:${{ github.sha }}
+          format: table
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true # block only on flaws that have a fix available
+          exit-code: "1"
+
+      - name: Push PDF Service Image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./pdf-service
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.PDF_IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.PDF_IMAGE_NAME }}:latest
 
   deploy:
     name: Deploy to Render

@@ -1,41 +1,21 @@
-FROM node:22-bookworm-slim AS builder
-
+FROM node:22-alpine AS builder
 WORKDIR /app
-
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        chromium \
-        ca-certificates \
-        fonts-liberation \
-        fonts-noto-color-emoji \
-    && rm -rf /var/lib/apt/lists/*
-
 COPY package*.json ./
 RUN npm ci
-
 COPY . .
 RUN npm run build
 
 
-FROM node:22-bookworm-slim AS runtime
-
+FROM node:22-alpine AS runtime
 WORKDIR /app
-
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        chromium \
-        ca-certificates \
-        fonts-liberation \
-        fonts-noto-color-emoji \
-    && rm -rf /var/lib/apt/lists/*
-
 ENV NODE_ENV=production
 
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev \
+    && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 COPY --from=builder /app/dist ./dist
 
+USER node
 EXPOSE 3000
-
 CMD ["node", "dist/index.js"]
