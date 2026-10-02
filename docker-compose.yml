@@ -26,6 +26,7 @@ services:
       LOG_LEVEL: info
       PDF_SERVICE_HOSTPORT: pdf-service:3001
       PDF_SERVICE_TOKEN: ${PDF_SERVICE_TOKEN}
+      DEMO_ADMIN_PASSWORD: ${DEMO_ADMIN_PASSWORD}
     depends_on:
       mongo:
         condition: service_healthy
