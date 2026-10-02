@@ -1,0 +1,39 @@
+name: Weekly security scan
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # every Monday, 06:00 UTC
+  workflow_dispatch: # also lets you run it by hand
+
+jobs:
+  scan:
+    name: Scan published images
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: read
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - rstephanh/docflow-backend
+          - rstephanh/docflow-frontend
+          - rstephanh/docflow-pdf-service
+
+    steps:
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Fails (and notifies you) when a HIGH/CRITICAL flaw now has a fix
+      - name: Scan for fixable vulnerabilities
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ghcr.io/${{ matrix.image }}:latest
+          format: table
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
