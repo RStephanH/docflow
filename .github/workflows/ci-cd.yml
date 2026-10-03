@@ -2,9 +2,9 @@ name: DocFlow CI/CD Pipeline
 
 on:
   push:
-    branches: [main, develop]
+    branches: [master, develop]
   pull_request:
-    branches: [main]
+    branches: [master]
 
 env:
   REGISTRY: ghcr.io
@@ -160,7 +160,7 @@ jobs:
     name: Deploy to Render
     needs: build-and-push
     runs-on: ubuntu-24.04
-    if: github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
+    if: github.ref == 'refs/heads/master' && vars.DEPLOY_ENABLED == 'true'
 
     steps:
       - name: Deploy Backend to Render
