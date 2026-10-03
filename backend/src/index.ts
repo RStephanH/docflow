@@ -1,22 +1,23 @@
+import 'dotenv/config'
 import express from 'express'
 import mongoose from 'mongoose'
-import dotenv from 'dotenv'
 import { z } from 'zod'
 import documentsRouter from './routes/documents'
 import authRouter from './routes/auth'
 import { authMiddleware } from './middleware/auth'
-import { rateLimiter } from './middleware/rateLimiter'
+import { rateLimiter, loginLimiter, generateLimiter } from './middleware/rateLimiter'
 import metricsRouter from './routes/metrics'
 import { requestLogger } from './middleware/logger'
 import logger from './config/logger'
 
-dotenv.config()
 
 // ── Validation des variables d'environnement ──────────────────────────────
 const EnvSchema = z.object({
   PORT: z.string().default('3000'),
   MONGODB_URI: z.string().min(1, 'MONGODB_URI est requis'),
-  JWT_SECRET: z.string().default('docflow-secret-dev'),
+  JWT_SECRET: z.string().min(32, 'JWT_SECRET est requis (32 caractères minimum)'),
+  PDF_SERVICE_HOSTPORT: z.string().min(1, 'PDF_SERVICE_HOSTPORT est requis'),
+  PDF_SERVICE_TOKEN: z.string().min(1, 'PDF_SERVICE_TOKEN est requis'),
   LOG_LEVEL: z.string().default('info'),
   NODE_ENV: z.string().default('development'),
 })
@@ -42,7 +43,7 @@ app.use(rateLimiter)
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*')
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-  res.header('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS')
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
   if (req.method === 'OPTIONS') { res.sendStatus(204); return }
   next()
 })
@@ -52,11 +53,14 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', db: mongoose.connection.readyState })
 })
 
+app.use('/auth/login', loginLimiter)
+
 // Auth — non protégé
 app.use('/auth', authRouter)
 
 // Routes protégées JWT
 app.use('/api', authMiddleware)
+app.post('/api/documents/generate', generateLimiter)   // counts only POST requests to this route
 app.use('/api/metrics', metricsRouter)
 app.use('/api/documents', documentsRouter)
 
