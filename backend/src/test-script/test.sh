@@ -7,7 +7,7 @@ echo "🔐 Login..."
 # 1️⃣ Récupérer le token
 RESPONSE=$(curl -s -X POST "$BASE_URL/auth/login" \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@docflow.fr","password":"admin123"}')
+  -d "{\"email\":\"admin@docflow.fr\",\"password\":\"${DEMO_ADMIN_PASSWORD:?set DEMO_ADMIN_PASSWORD}\"}")
 
 # 2️⃣ Extraire le token (sans jq)
 TOKEN=$(echo $RESPONSE | grep -o '"token":"[^"]*' | cut -d'"' -f4)
