@@ -127,7 +127,7 @@ On every push, `.github/workflows/ci-cd.yml` runs:
 1. **Lint and tests** for the backend and the frontend.
 2. **Build** of the backend and PDF service images, each followed by a **Trivy scan** that fails the pipeline on fixable HIGH/CRITICAL findings.
 3. **Publication** of the images to GitHub Container Registry, tagged with the commit SHA.
-4. **Deployment to Render** through deploy hooks, on `main` only and behind the `DEPLOY_ENABLED` repository variable.
+4. **Deployment to Render** through deploy hooks, on `master` only and behind the `DEPLOY_ENABLED` repository variable.
 
 A second workflow, `security-scan.yml`, rescans the published images every week. A failure there means a fix now exists for a flaw that had none when the image was built.
 
