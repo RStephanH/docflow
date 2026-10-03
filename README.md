@@ -94,7 +94,8 @@ Log in with `admin@docflow.fr` or `user@docflow.fr`; the passwords are `DEMO_ADM
 Run the tests:
 
 ```bash
-cd backend && npm test
+cd backend && npm test      # Jest
+cd frontend && npm test     # Vitest
 ```
 
 ### Environment variables
