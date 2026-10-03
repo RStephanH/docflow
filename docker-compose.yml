@@ -1,54 +1,69 @@
 services:
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "80:80"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-    depends_on:
-      frontend:
-        condition: service_healthy
-      backend:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:80/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
   frontend:
-    build: ./frontend
-    expose:
-      - "5173"
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:3000
+    ports:
+      - "8080:80"
     depends_on:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:5173"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/"]
       interval: 30s
       timeout: 10s
       retries: 3
 
   backend:
     build: ./backend
-    expose:
-      - "3000"
+    ports:
+      - "3000:3000"
     environment:
-      - MONGODB_URI=mongodb://mongo:27017/pdfgen
-      - NODE_ENV=production
-      - JWT_SECRET=docflow-secret-prod
-      - LOG_LEVEL=info
+      MONGODB_URI: mongodb://mongo:27017/pdfgen
+      NODE_ENV: production
+      JWT_SECRET: ${JWT_SECRET}
+      LOG_LEVEL: info
+      PDF_SERVICE_HOSTPORT: pdf-service:3001
+      PDF_SERVICE_TOKEN: ${PDF_SERVICE_TOKEN}
+      DEMO_ADMIN_PASSWORD: ${DEMO_ADMIN_PASSWORD}
+      DEMO_USER_PASSWORD: ${DEMO_USER_PASSWORD}
     depends_on:
       mongo:
         condition: service_healthy
-    volumes:
-      - ./backend/src:/app/src
+      pdf-service:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://127.0.0.1:3000/health', res => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))",
+        ]
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 30s
+
+  pdf-service:
+    build: ./pdf-service
+    environment:
+      PDF_SERVICE_TOKEN: ${PDF_SERVICE_TOKEN}
+      CHROMIUM_NO_SANDBOX: "true"
+    # no "ports:" on purpose: reachable only from the compose network
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3001/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
 
   mongo:
     image: mongo:7

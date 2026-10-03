@@ -1,24 +1,25 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getDocuments, getMetrics, downloadDocument } from '../api/documents'
 import type { Document, Metrics } from '../api/documents'
 
-
 export default function Dashboard() {
-  const [docs, setDocs]         = useState<Document[]>([])
-  const [metrics, setMetrics]   = useState<Metrics | null>(null)
-  const [page, setPage]         = useState(1)
+  const [docs, setDocs] = useState<Document[]>([])
+  const [metrics, setMetrics] = useState<Metrics | null>(null)
+  const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
-  const [loading, setLoading]   = useState(true)
+  const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
 
-  const fetchData = async (p: number) => {
+  const fetchData = useCallback(async (p: number) => {
     setLoading(true)
+
     try {
       const [docsData, metricsData] = await Promise.all([
         getDocuments(p, 5),
         getMetrics(),
       ])
+
       setDocs(docsData.docs)
       setTotalPages(docsData.totalPages)
       setMetrics(metricsData)
@@ -27,18 +28,21 @@ export default function Dashboard() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [navigate])
 
-  useEffect(() => { fetchData(page) }, [page])
+  useEffect(() => {
+    fetchData(page)
+  }, [fetchData, page])
+
 
   const handleDownload = async (doc: Document) => {
-  await downloadDocument(doc._id, doc.title)
-}
+    await downloadDocument(doc._id, doc.title)
+  }
 
 
   const circuitColor = (state: string) => {
-    if (state === 'CLOSED')    return 'text-green-600 bg-green-50'
-    if (state === 'OPEN')      return 'text-red-600 bg-red-50'
+    if (state === 'CLOSED') return 'text-green-600 bg-green-50'
+    if (state === 'OPEN') return 'text-red-600 bg-red-50'
     if (state === 'HALF_OPEN') return 'text-yellow-600 bg-yellow-50'
     return 'text-gray-600'
   }

@@ -2,19 +2,20 @@ name: DocFlow CI/CD Pipeline
 
 on:
   push:
-    branches: [main, develop]
+    branches: [master, develop]
   pull_request:
-    branches: [main]
+    branches: [master]
 
 env:
   REGISTRY: ghcr.io
-  BACKEND_IMAGE_NAME: rstephanh/docflow-backend-backend
-  FRONTEND_IMAGE_NAME: rstephanh/docflow-backend-frontend
+  BACKEND_IMAGE_NAME: rstephanh/docflow-backend
+  FRONTEND_IMAGE_NAME: rstephanh/docflow-frontend
+  PDF_IMAGE_NAME: rstephanh/docflow-pdf-service
 
 jobs:
   quality-checks:
     name: Lint & Tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout repository
@@ -23,13 +24,14 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "22"
+          cache: "npm"
           cache-dependency-path: |
             backend/package-lock.json
             frontend/package-lock.json
 
       # ---------------- BACKEND ----------------
+
       - name: Install Backend dependencies
         working-directory: ./backend
         run: npm ci
@@ -43,12 +45,15 @@ jobs:
         run: npm run test -- --ci
 
       - name: Upload Backend Coverage
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: backend-coverage
           path: backend/coverage
+          if-no-files-found: ignore
 
       # ---------------- FRONTEND ----------------
+
       - name: Install Frontend dependencies
         working-directory: ./frontend
         run: npm ci
@@ -64,7 +69,7 @@ jobs:
   build-and-push:
     name: Build & Push Docker Images
     needs: quality-checks
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     if: github.event_name == 'push'
 
@@ -84,18 +89,37 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       # -------- BACKEND --------
-      - name: Build & Push Backend Image
-        uses: docker/build-push-action@v5
+
+      - name: Build Backend Image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: false
+          load: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:${{ github.sha }}
+
+      - name: Scan Backend Image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:${{ github.sha }}
+          format: table
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+
+      - name: Push Backend Image
+        uses: docker/build-push-action@v6
         with:
           context: ./backend
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:${{ github.sha }}
             ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:latest
-          
+
       # -------- FRONTEND --------
+
       - name: Build & Push Frontend Image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./frontend
           push: true
@@ -103,19 +127,52 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ github.sha }}
             ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:latest
 
-      # -------- SECURITY SCAN --------
-      - name: Scan Backend Image (Trivy)
-        uses: aquasecurity/trivy-action@v0.20.0
+      # -------- PDF SERVICE --------
+
+      - name: Build PDF Service Image
+        uses: docker/build-push-action@v6
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:${{ github.sha }}
+          context: ./pdf-service
+          push: false
+          load: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.PDF_IMAGE_NAME }}:${{ github.sha }}
+
+      - name: Scan PDF Service Image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.PDF_IMAGE_NAME }}:${{ github.sha }}
+          format: table
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true # block only on flaws that have a fix available
+          exit-code: "1"
+
+      - name: Push PDF Service Image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./pdf-service
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.PDF_IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.PDF_IMAGE_NAME }}:latest
 
   deploy:
     name: Deploy to Render
     needs: build-and-push
-    runs-on: ubuntu-latest
-
-    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    if: github.ref == 'refs/heads/master' && vars.DEPLOY_ENABLED == 'true'
 
     steps:
-      - name: Trigger Render Deployment
-        run: curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+      - name: Deploy Backend to Render
+        run: |
+          curl --fail-with-body --request POST \
+            --get \
+            --data-urlencode "imgURL=${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:${{ github.sha }}" \
+            "${{ secrets.RENDER_BACKEND_DEPLOY_HOOK_URL }}"
+
+      - name: Deploy Frontend to Render
+        run: |
+          curl --fail-with-body --request POST \
+            --get \
+            --data-urlencode "imgURL=${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ github.sha }}" \
+            "${{ secrets.RENDER_FRONTEND_DEPLOY_HOOK_URL }}"

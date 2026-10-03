@@ -10,11 +10,13 @@ export interface IDocument extends Document {
 
 const DocumentSchema = new Schema<IDocument>(
   {
-    title:   { type: String, required: true },
+    title: { type: String, required: true },
     content: { type: String, required: true },
-    fileId:  { type: String, default: null },  // ← ajout
+    fileId: { type: String, default: null },  // ← ajout
   },
   { timestamps: true }
 )
+
+DocumentSchema.index({ createdAt: -1 }) // sorted copy of the dates: "latest first" without reading everything
 
 export default mongoose.model<IDocument>('Document', DocumentSchema)

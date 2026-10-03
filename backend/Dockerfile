@@ -1,25 +1,21 @@
-FROM node:20-alpine
-
+FROM node:22-alpine AS builder
 WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
 
-# Puppeteer a besoin de ces dépendances système sur Alpine
-RUN apk add --no-cache \
-    chromium \
-    nss \
-    freetype \
-    harfbuzz \
-    ca-certificates \
-    ttf-freefont
 
-# Dire à Puppeteer d'utiliser le Chromium système, pas le sien
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+FROM node:22-alpine AS runtime
+WORKDIR /app
+ENV NODE_ENV=production
 
 COPY package*.json ./
-RUN npm install
+RUN npm ci --omit=dev \
+    && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
-COPY . .
+COPY --from=builder /app/dist ./dist
 
+USER node
 EXPOSE 3000
-
-CMD ["npx", "ts-node-dev", "--respawn", "--transpile-only", "src/index.ts"]
+CMD ["node", "dist/index.js"]

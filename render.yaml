@@ -1,0 +1,70 @@
+services:
+  # Private: no public URL, reachable only by the backend
+  - type: pserv
+    name: docflow-pdf
+    runtime: image
+    image:
+      url: ghcr.io/rstephanh/docflow-pdf-service:latest
+      creds:
+        fromRegistryCreds:
+          name: ghcr-docflow
+    region: frankfurt
+    plan: standard # Chromium needs RAM; lower it only after measuring
+    envVars:
+      - key: PORT
+        value: "3001"
+      - key: CHROMIUM_NO_SANDBOX
+        value: "true"
+      - key: PDF_SERVICE_TOKEN
+        generateValue: true # random, never stored in Git
+
+  - type: web
+    name: docflow-backend
+    runtime: image
+    image:
+      url: ghcr.io/rstephanh/docflow-backend:latest
+      creds:
+        fromRegistryCreds:
+          name: ghcr-docflow
+    region: frankfurt
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "3000"
+      - key: NODE_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: info
+      - key: MONGODB_URI
+        sync: false # typed once in the dashboard
+      - key: DEMO_ADMIN_PASSWORD
+        sync: false
+      - key: DEMO_USER_PASSWORD
+        sync: false # the one you may publish in the README
+      - key: JWT_SECRET
+        generateValue: true
+      - key: PDF_SERVICE_HOSTPORT
+        fromService:
+          type: pserv
+          name: docflow-pdf
+          property: hostport
+      - key: PDF_SERVICE_TOKEN
+        fromService:
+          type: pserv
+          name: docflow-pdf
+          envVarKey: PDF_SERVICE_TOKEN
+
+  - type: web
+    name: docflow-frontend
+    runtime: image
+    image:
+      url: ghcr.io/rstephanh/docflow-frontend:latest
+      creds:
+        fromRegistryCreds:
+          name: ghcr-docflow
+    region: frankfurt
+    plan: starter
+    envVars:
+      - key: PORT
+        value: "80"
