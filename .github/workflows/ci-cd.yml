@@ -160,8 +160,7 @@ jobs:
     name: Deploy to Render
     needs: build-and-push
     runs-on: ubuntu-24.04
-
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
 
     steps:
       - name: Deploy Backend to Render
